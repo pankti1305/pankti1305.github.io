@@ -10,6 +10,16 @@
 /* Pick the first view before anything paints, so a project link never flashes the homepage. */
 document.documentElement.dataset.view=/^#[\w-]+$/.test(location.hash)&&!/^#(home|work|about|contact)$/.test(location.hash)?'project':'home';
 </script>
+<script>
+/* The intro plays on a fresh load only: not for reduced motion, a background tab or a step back through
+   history. The class keeps the paper up from the first paint; the timer is a safety net. */
+(function(r){
+  var n=performance.getEntriesByType&&performance.getEntriesByType('navigation')[0];
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches||document.visibilityState!=='visible'||(n&&n.type==='back_forward'))return;
+  r.classList.add('intro-on');
+  setTimeout(function(){r.classList.remove('intro-on','intro-run');if(document.body)document.body.classList.remove('hero-load');},9000);
+})(document.documentElement);
+</script>
 
 <!--
   ================================================================
@@ -347,12 +357,181 @@ dialog.lb::backdrop{background:transparent}
 .lb-prev{left:0}.lb-next{right:0}
 @media (max-width:640px){.lb-stage{padding:14px 0}.lb-prev,.lb-next{top:auto;bottom:-6px;transform:none}}
 
+/* ---------- intro: entering the architect's drawing before meeting the designer ----------
+   Plays once per load (the script in <head> that sets .intro-on decides). Scene 1 holds the whole floor plan; scene 2 moves
+   the camera into the living room; scene 3 signs the name; scene 4 lifts the paper onto the homepage.
+   Everything after scene 1 is timed from the moment the intro script adds .go to #intro. */
+#intro{--paper:#F4EDDF;--ink:#3A3430;--brown:#8C6B4C;--burg:#7A2433;--name:#5B1925;display:none}
+html.intro-on{background:#F4EDDF}
+html.intro-on #intro{
+  display:block;position:fixed;inset:0;z-index:1000;overflow:hidden;touch-action:none;background:var(--paper);
+}
+#intro::before{content:"";position:absolute;inset:0;background:radial-gradient(130% 100% at 50% 42%,rgba(255,251,242,0) 52%,rgba(122,92,50,.08) 100%)}
+/* the page is out of sight while the camera moves, so the 3D scene rests until the paper lifts */
+html.intro-run .hero-pin{content-visibility:hidden}
+#intro .dim{position:absolute;inset:0}
+#plan{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:hidden;opacity:0;animation:planIn .45s cubic-bezier(.2,.7,.1,1) forwards}
+#plan *{vector-effect:non-scaling-stroke}
+#plan .ws{fill:none;stroke:var(--ink);stroke-width:2;stroke-linejoin:round}
+#plan .we{fill:#D9CEBA}
+#plan .wi{fill:#E3DAC8}
+#plan .gl,#plan .dl{fill:none;stroke:var(--ink);stroke-width:1}
+#plan .dl{stroke:var(--brown);stroke-width:1.4}
+#plan .da{fill:none;stroke:var(--brown);stroke-width:.8}
+#plan .fu *{fill:var(--paper);stroke:var(--brown);stroke-width:1;stroke-linejoin:round}
+#plan .fu .pl{fill:none}
+#plan .fu .rg,#plan .rg,#plan .rg2,#plan .rg3{fill:none;stroke:var(--burg)}
+#plan .rg{stroke-width:1.2}
+#plan .rg2{stroke-width:.7}
+#plan .rg3{stroke-width:.7;stroke-dasharray:3 4}
+#plan .dm,#plan .ax,#plan .fr2{fill:none;stroke:var(--burg);stroke-width:.8}
+#plan .ax{stroke-dasharray:9 3 2 3;stroke-width:.6}
+#plan .fr1{fill:none;stroke:var(--ink);stroke-width:1.4}
+#plan .bb{fill:none;stroke:var(--burg);stroke-width:.8}
+#plan .na{fill:var(--burg);stroke:none}
+#plan .sb1{fill:var(--ink);stroke:var(--ink);stroke-width:.8}
+#plan .sb2{fill:var(--paper);stroke:var(--ink);stroke-width:.8}
+#plan text{font-family:"Archivo","Helvetica Neue",Arial,sans-serif;font-stretch:78%;font-weight:400;text-anchor:middle;stroke:none;text-rendering:geometricPrecision}
+#plan .dt{font-size:11px;fill:var(--burg);letter-spacing:.04em}
+#plan .bt{font-size:12px;fill:var(--burg);letter-spacing:.06em}
+#plan .lt{font-size:12px;fill:var(--ink);letter-spacing:.16em;text-anchor:start;opacity:.78}
+#plan .tt{font-size:15px;fill:var(--ink);letter-spacing:.14em;text-anchor:start;font-weight:500}
+
+#intro .sig{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+#intro .sg{
+  position:relative;font-family:var(--serif);font-style:italic;font-weight:300;line-height:1;letter-spacing:-.02em;
+  font-size:clamp(40px,min(11.5vw,15vh),128px);color:var(--name);white-space:nowrap;transform:translateY(.1em);
+}
+#intro .nm{
+  display:block;opacity:0;
+  -webkit-mask:linear-gradient(90deg,#000 38%,transparent 62%) 100% 0/260% 100% no-repeat;
+  mask:linear-gradient(90deg,#000 38%,transparent 62%) 100% 0/260% 100% no-repeat;
+}
+#intro .dots{position:absolute;left:100%;bottom:.2em;margin-left:.3em;display:flex;gap:.2em}
+#intro .dots i{display:block;width:.08em;height:.08em;border-radius:50%;background:currentColor;opacity:0}
+
+@keyframes planIn{to{opacity:1}}
+@keyframes planDim{to{opacity:.28}}
+@keyframes nameIn{
+  0%{opacity:0;-webkit-mask-position:100% 0;mask-position:100% 0}
+  30%{opacity:1}
+  100%{opacity:1;-webkit-mask-position:0 0;mask-position:0 0}
+}
+@keyframes dotIn{from{opacity:0;transform:scale(.3)}55%{opacity:1}to{opacity:1;transform:scale(1)}}
+@keyframes planOut{to{opacity:0}}
+@keyframes sigOut{to{opacity:0}}
+@keyframes introTone{to{background-color:var(--page,var(--paper))}}
+@keyframes introLift{to{opacity:0;visibility:hidden}}
+#intro.go .dim{animation:planDim 1.1s cubic-bezier(.4,0,.2,1) .45s forwards,planOut .25s ease-in 1.7s forwards}
+#intro.go::before{animation:planOut .25s ease-in 1.7s forwards}
+#intro.go .nm{animation:nameIn .7s cubic-bezier(.3,.6,.2,1) .7s forwards}
+#intro.go .dots i{animation:dotIn .4s cubic-bezier(.3,1.25,.5,1) both}
+#intro.go .dots i:nth-child(1){animation-delay:1.1s}
+#intro.go .dots i:nth-child(2){animation-delay:1.22s}
+#intro.go .dots i:nth-child(3){animation-delay:1.34s}
+#intro.go .sig{animation:sigOut .25s ease-in 1.7s forwards}
+#intro.go{animation:introTone .3s ease-in-out 1.9s forwards,introLift .3s ease-out 2.1s forwards}
+@media (prefers-reduced-motion:reduce){html.intro-on #intro{display:none}html.intro-on{background:none}}
+
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{transition-duration:.01ms !important;animation-duration:.01ms !important;scroll-behavior:auto !important}
 }
 </style>
 </head>
 <body class="hero-load">
+<!-- intro: a floor plan drawn in centimetres (1 unit = 1 cm) that the camera moves into, then the name -->
+<div id="intro" aria-hidden="true">
+  <div class="dim"><svg id="plan" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false"><g id="cam"><path class="ax" d="M171.5 92V150M700 92V150M966 92V150M1253 92V150M1428.5 92V150M114 161.5H160M114 566H160M114 838.5H160"/><circle class="bb" cx="171.5" cy="76" r="14"/><text x="171.5" y="80.5" class="bt">1</text><circle class="bb" cx="700" cy="76" r="14"/><text x="700" y="80.5" class="bt">2</text><circle class="bb" cx="966" cy="76" r="14"/><text x="966" y="80.5" class="bt">3</text><circle class="bb" cx="1253" cy="76" r="14"/><text x="1253" y="80.5" class="bt">4</text><circle class="bb" cx="1428.5" cy="76" r="14"/><text x="1428.5" y="80.5" class="bt">5</text><circle class="bb" cx="100" cy="161.5" r="14"/><text x="100" y="166" class="bt">A</text><circle class="bb" cx="100" cy="566" r="14"/><text x="100" y="570.5" class="bt">B</text><circle class="bb" cx="100" cy="838.5" r="14"/><text x="100" y="843" class="bt">C</text><circle class="rg" cx="440" cy="330" r="122"/><circle class="rg2" cx="440" cy="330" r="115"/><circle class="rg3" cx="440" cy="330" r="64"/><path class="ws" d="M160 150h140v23h-140zM570 150h200v23h-200zM890 150h130v23h-130zM1200 150h100v23h-100zM1370 150h70v23h-70zM160 827h100v23h-100zM420 827h370v23h-370zM890 827h140v23h-140zM1190 827h250v23h-250zM160 173h23v77h-23zM160 450h23v377h-23zM1417 173h23v482h-23zM1417 735h23v92h-23zM694 173h12v77h-12zM694 340h12v300h-12zM694 735h12v92h-12zM960 173h12v297h-12zM960 560h12v165h-12zM960 815h12v12h-12zM1247 173h12v97h-12zM1247 360h12v110h-12zM1247 560h12v50h-12zM1247 700h12v127h-12zM183 560h42v12h-42zM505 560h189v12h-189zM706 420h254v12h-254zM1259 377h158v12h-158zM972 560h275v12h-275zM1259 560h158v12h-158z"/><path class="we" d="M160 150h140v23h-140zM570 150h200v23h-200zM890 150h130v23h-130zM1200 150h100v23h-100zM1370 150h70v23h-70zM160 827h100v23h-100zM420 827h370v23h-370zM890 827h140v23h-140zM1190 827h250v23h-250zM160 173h23v77h-23zM160 450h23v377h-23zM1417 173h23v482h-23zM1417 735h23v92h-23z"/><path class="wi" d="M694 173h12v77h-12zM694 340h12v300h-12zM694 735h12v92h-12zM960 173h12v297h-12zM960 560h12v165h-12zM960 815h12v12h-12zM1247 173h12v97h-12zM1247 360h12v110h-12zM1247 560h12v50h-12zM1247 700h12v127h-12zM183 560h42v12h-42zM505 560h189v12h-189zM706 420h254v12h-254zM1259 377h158v12h-158zM972 560h275v12h-275zM1259 560h158v12h-158z"/><path class="gl" d="M300 150H570M300 161.5H570M300 173H570M770 150H890M770 161.5H890M770 173H890M1020 150H1200M1020 161.5H1200M1020 173H1200M1300 150H1370M1300 161.5H1370M1300 173H1370M260 827H420M260 838.5H420M260 850H420M1030 827H1190M1030 838.5H1190M1030 850H1190M160 250V450M171.5 250V450M183 250V450M1417 655V735M1428.5 655V735M1440 655V735"/><path class="dl" d="M700 340H790M700 735H795M966 560H1056M966 725H1056M1253 360H1343M1253 560H1343M1253 700H1343M790 838.5V738.5"/><path class="da" d="M790 340A90 90 0 0 0 700 250M795 735A95 95 0 0 0 700 640M1056 560A90 90 0 0 0 966 470M1056 725A90 90 0 0 1 966 815M1343 360A90 90 0 0 0 1253 270M1343 560A90 90 0 0 0 1253 470M1343 700A90 90 0 0 0 1253 610M790 738.5A100 100 0 0 1 890 838.5"/><g class="fu"><rect x="330" y="400" width="220" height="92" rx="9"/><rect x="330" y="466" width="220" height="26" rx="9"/><rect x="330" y="400" width="24" height="74" rx="8"/><rect x="526" y="400" width="24" height="74" rx="8"/><rect x="357" y="405" width="55" height="58" rx="5"/><rect x="414" y="405" width="55" height="58" rx="5"/><rect x="471" y="405" width="53" height="58" rx="5"/><g transform="translate(372 432) rotate(-14)"><rect x="-15" y="-15" width="30" height="30" rx="5"/></g><g transform="translate(508 432) rotate(12)"><rect x="-15" y="-15" width="30" height="30" rx="5"/></g><g transform="translate(286 330) rotate(-90)"><rect x="-42" y="-42" width="84" height="84" rx="10"/><rect x="-42" y="-42" width="84" height="22" rx="9"/><rect x="-42" y="-34" width="16" height="76" rx="7"/><rect x="26" y="-34" width="16" height="76" rx="7"/><rect x="-24" y="-18" width="48" height="54" rx="6"/></g><g transform="translate(594 330) rotate(90)"><rect x="-42" y="-42" width="84" height="84" rx="10"/><rect x="-42" y="-42" width="84" height="22" rx="9"/><rect x="-42" y="-34" width="16" height="76" rx="7"/><rect x="26" y="-34" width="16" height="76" rx="7"/><rect x="-24" y="-18" width="48" height="54" rx="6"/></g><circle cx="290" cy="436" r="22"/><circle class="pl" cx="290" cy="436" r="14"/><circle cx="594" cy="436" r="12"/><circle class="pl" cx="594" cy="436" r="5"/><rect x="656" y="248" width="36" height="164" rx="2"/><path d="M656 302L692 302"/><path d="M656 358L692 358"/><circle class="pl" cx="676" cy="222" r="20"/><ellipse class="pl" cx="0" cy="-9.2" rx="5.2" ry="9.2" transform="translate(676 222) rotate(12)"/><ellipse class="pl" cx="0" cy="-9.2" rx="5.2" ry="9.2" transform="translate(676 222) rotate(72)"/><ellipse class="pl" cx="0" cy="-9.2" rx="5.2" ry="9.2" transform="translate(676 222) rotate(132)"/><ellipse class="pl" cx="0" cy="-9.2" rx="5.2" ry="9.2" transform="translate(676 222) rotate(192)"/><ellipse class="pl" cx="0" cy="-9.2" rx="5.2" ry="9.2" transform="translate(676 222) rotate(252)"/><ellipse class="pl" cx="0" cy="-9.2" rx="5.2" ry="9.2" transform="translate(676 222) rotate(312)"/><circle class="pl" cx="676" cy="222" r="2.4"/><circle class="pl" cx="250" cy="518" r="22"/><ellipse class="pl" cx="0" cy="-10.1" rx="5.7" ry="10.1" transform="translate(250 518) rotate(40)"/><ellipse class="pl" cx="0" cy="-10.1" rx="5.7" ry="10.1" transform="translate(250 518) rotate(100)"/><ellipse class="pl" cx="0" cy="-10.1" rx="5.7" ry="10.1" transform="translate(250 518) rotate(160)"/><ellipse class="pl" cx="0" cy="-10.1" rx="5.7" ry="10.1" transform="translate(250 518) rotate(220)"/><ellipse class="pl" cx="0" cy="-10.1" rx="5.7" ry="10.1" transform="translate(250 518) rotate(280)"/><ellipse class="pl" cx="0" cy="-10.1" rx="5.7" ry="10.1" transform="translate(250 518) rotate(340)"/><circle class="pl" cx="250" cy="518" r="2.4"/><rect x="340" y="652" width="200" height="96" rx="5"/><rect class="rg2" x="347" y="659" width="186" height="82" rx="3"/><g transform="translate(372 624)"><rect x="-19" y="-17" width="38" height="36" rx="7"/><rect x="-21" y="-22" width="42" height="9" rx="4"/></g><g transform="translate(372 776) rotate(180)"><rect x="-19" y="-17" width="38" height="36" rx="7"/><rect x="-21" y="-22" width="42" height="9" rx="4"/></g><g transform="translate(440 624)"><rect x="-19" y="-17" width="38" height="36" rx="7"/><rect x="-21" y="-22" width="42" height="9" rx="4"/></g><g transform="translate(440 776) rotate(180)"><rect x="-19" y="-17" width="38" height="36" rx="7"/><rect x="-21" y="-22" width="42" height="9" rx="4"/></g><g transform="translate(508 624)"><rect x="-19" y="-17" width="38" height="36" rx="7"/><rect x="-21" y="-22" width="42" height="9" rx="4"/></g><g transform="translate(508 776) rotate(180)"><rect x="-19" y="-17" width="38" height="36" rx="7"/><rect x="-21" y="-22" width="42" height="9" rx="4"/></g><g transform="translate(312 700) rotate(-90)"><rect x="-19" y="-17" width="38" height="36" rx="7"/><rect x="-21" y="-22" width="42" height="9" rx="4"/></g><g transform="translate(568 700) rotate(90)"><rect x="-19" y="-17" width="38" height="36" rx="7"/><rect x="-21" y="-22" width="42" height="9" rx="4"/></g><circle class="rg3" cx="440" cy="700" r="46"/><circle cx="440" cy="700" r="6"/><rect x="184" y="640" width="36" height="120" rx="2"/><path d="M184 680L220 680"/><path d="M184 720L220 720"/><circle class="pl" cx="206" cy="790" r="18"/><ellipse class="pl" cx="0" cy="-8.3" rx="4.7" ry="8.3" transform="translate(206 790) rotate(0)"/><ellipse class="pl" cx="0" cy="-8.3" rx="4.7" ry="8.3" transform="translate(206 790) rotate(60)"/><ellipse class="pl" cx="0" cy="-8.3" rx="4.7" ry="8.3" transform="translate(206 790) rotate(120)"/><ellipse class="pl" cx="0" cy="-8.3" rx="4.7" ry="8.3" transform="translate(206 790) rotate(180)"/><ellipse class="pl" cx="0" cy="-8.3" rx="4.7" ry="8.3" transform="translate(206 790) rotate(240)"/><ellipse class="pl" cx="0" cy="-8.3" rx="4.7" ry="8.3" transform="translate(206 790) rotate(300)"/><circle class="pl" cx="206" cy="790" r="2.4"/><rect x="706" y="173" width="194" height="60"/><rect x="900" y="173" width="60" height="190"/><rect x="900" y="362" width="60" height="58"/><rect x="762" y="181" width="94" height="44" rx="4"/><rect x="768" y="187" width="38" height="32" rx="8"/><rect x="812" y="187" width="38" height="32" rx="8"/><circle cx="831" cy="203" r="0.1"/><rect x="905" y="245" width="50" height="54" rx="3"/><circle cx="922" cy="262" r="8"/><circle cx="940" cy="262" r="8"/><circle cx="922" cy="282" r="8"/><circle cx="940" cy="282" r="8"/><path d="M900 362L960 420"/><path d="M960 362L900 420"/><rect x="740" y="432" width="160" height="32" rx="2"/><path d="M793 432L793 464"/><path d="M847 432L847 464"/><circle class="pl" cx="932" cy="458" r="16"/><ellipse class="pl" cx="0" cy="-7.4" rx="4.2" ry="7.4" transform="translate(932 458) rotate(0)"/><ellipse class="pl" cx="0" cy="-7.4" rx="4.2" ry="7.4" transform="translate(932 458) rotate(60)"/><ellipse class="pl" cx="0" cy="-7.4" rx="4.2" ry="7.4" transform="translate(932 458) rotate(120)"/><ellipse class="pl" cx="0" cy="-7.4" rx="4.2" ry="7.4" transform="translate(932 458) rotate(180)"/><ellipse class="pl" cx="0" cy="-7.4" rx="4.2" ry="7.4" transform="translate(932 458) rotate(240)"/><ellipse class="pl" cx="0" cy="-7.4" rx="4.2" ry="7.4" transform="translate(932 458) rotate(300)"/><circle class="pl" cx="932" cy="458" r="2.4"/><rect x="1015" y="173" width="190" height="12" rx="2"/><rect x="1020" y="185" width="180" height="188" rx="6"/><path d="M1020 296L1200 296"/><rect x="1033" y="196" width="66" height="38" rx="8"/><rect x="1121" y="196" width="66" height="38" rx="8"/><rect class="rg2" x="1020" y="330" width="180" height="43" rx="4"/><rect x="974" y="173" width="38" height="40" rx="3"/><circle cx="993" cy="193" r="9"/><rect x="1208" y="173" width="38" height="40" rx="3"/><circle cx="1227" cy="193" r="9"/><rect x="1055" y="388" width="110" height="34" rx="5"/><rect x="974" y="258" width="38" height="142" rx="2"/><path d="M974 305L1012 305"/><path d="M974 353L1012 353"/><rect x="1325" y="179" width="86" height="86" rx="2"/><path class="rg3" d="M1325 179L1411 265"/><circle cx="1368" cy="222" r="5"/><rect x="1266" y="179" width="54" height="42" rx="8"/><rect x="1274" y="186" width="38" height="28" rx="12"/><circle cx="1293" cy="180" r="0.1"/><rect x="1385" y="310" width="28" height="36" rx="3"/><g transform="translate(1366 328)"><ellipse cx="0" cy="0" rx="19" ry="15"/></g><rect x="1350" y="395" width="61" height="158" rx="2"/><path d="M1380 395L1380 553"/><path class="rg3" d="M1350 474L1411 395"/><path class="rg3" d="M1350 553L1411 474"/><rect x="1239" y="640" width="8" height="160" rx="2"/><rect x="1055" y="640" width="184" height="160" rx="6"/><path d="M1140 640L1140 800"/><rect x="1203" y="648" width="30" height="68" rx="8"/><rect x="1203" y="724" width="30" height="68" rx="8"/><rect x="1060" y="578" width="180" height="55" rx="2"/><path d="M1120 578L1120 633"/><path d="M1180 578L1180 633"/><rect x="1264" y="745" width="150" height="76" rx="14"/><rect x="1272" y="752" width="134" height="62" rx="10"/><circle cx="1388" cy="783" r="5"/><rect x="1378" y="590" width="34" height="24" rx="3"/><ellipse cx="1361" cy="602" rx="17" ry="13"/><rect x="1356" y="660" width="56" height="44" rx="8"/><rect x="1364" y="667" width="40" height="30" rx="12"/></g><path class="dm" d="M160 124H1440M155 129L165 119M160 128V146M695 129L705 119M700 128V146M961 129L971 119M966 128V146M1248 129L1258 119M1253 128V146M1435 129L1445 119M1440 128V146M160 100H1440M155 105L165 95M1435 105L1445 95M1470 150V850M1465 155L1475 145M1466 150H1446M1465 571L1475 561M1466 566H1446M1465 855L1475 845M1466 850H1446M1494 150V850M1489 155L1499 145M1489 855L1499 845M183 192H694M178 197L188 187M689 197L699 187M204 173V560M199 178L209 168M199 565L209 555"/><text x="430" y="118" class="dt">5400</text><text x="833" y="118" class="dt">2660</text><text x="1109.5" y="118" class="dt">2870</text><text x="1346.5" y="118" class="dt">1870</text><text x="800" y="94" class="dt">12800</text><text transform="translate(1464 358) rotate(-90)" class="dt">4160</text><text transform="translate(1464 708) rotate(-90)" class="dt">2840</text><text transform="translate(1488 500) rotate(-90)" class="dt">7000</text><text x="438.5" y="187" class="dt">5110</text><text transform="translate(199 366.5) rotate(-90)" class="dt">3870</text><text x="236" y="262" class="lt">LIVING</text><text x="205" y="616" class="lt">DINING</text><text x="733" y="404" class="lt">KITCHEN</text><text x="740" y="500" class="lt">FOYER</text><text x="985" y="452" class="lt">MASTER BEDROOM</text><text x="1275" y="355" class="lt">BATH</text><text x="1275" y="540" class="lt">DRESS</text><text x="985" y="598" class="lt">BEDROOM 2</text><text x="1275" y="600" class="lt">BATH</text><rect class="fr1" x="40" y="40" width="1520" height="920"/><rect class="fr2" x="52" y="52" width="1496" height="896"/><path class="fr2" d="M800 40v12M800 948v12M40 500h12M1548 500h12"/><circle class="fr2" cx="1510" cy="108" r="22"/><path class="na" d="M1510 88l8 26-8-6-8 6z"/><text x="1510" y="142" class="bt">N</text><rect class="sb1" x="160" y="906" width="100" height="7"/><rect class="sb2" x="260" y="906" width="100" height="7"/><rect class="sb1" x="360" y="906" width="100" height="7"/><text x="160" y="930" class="bt">0</text><text x="260" y="930" class="bt">1</text><text x="360" y="930" class="bt">2</text><text x="460" y="930" class="bt">3</text><text x="482" y="930" class="bt" style="text-anchor:start">m</text><path class="fr2" d="M1116 884H1536V938H1116zM1116 912H1536"/><text x="1130" y="905" class="tt">Ground floor plan</text><text x="1130" y="930" class="bt" style="text-anchor:start">Scale 1 : 50</text><text x="1340" y="930" class="bt" style="text-anchor:start">Dimensions in mm</text></g></svg></div>
+  <div class="sig"><div class="sg"><span class="nm">Pankti Shah</span><span class="dots"><i></i><i></i><i></i></span></div></div>
+</div>
+<script>
+/* Intro. Scene 1 holds the whole drawing until the page is ready, then the camera moves into the
+   living room and CSS takes over the rest (see the intro styles). Click, tap or any key skips it. */
+(function(){
+  var root=document.documentElement, intro=document.getElementById('intro');
+  if(!intro||!root.classList.contains('intro-on'))return;
+  var plan=document.getElementById('plan'), cam=document.getElementById('cam'), state=0;   // 0 playing, 1 skipping, 2 done
+
+  var resized=false;
+  function noteResize(){resized=true;}
+  function wake(){                                 // give the page back to the 3D scene
+    if(!root.classList.contains('intro-run'))return;
+    root.classList.remove('intro-run');
+    removeEventListener('resize',noteResize);
+    if(resized)dispatchEvent(new Event('resize')); // the stage was skipped while the window changed size, so it measures itself again
+  }
+  function end(){
+    if(state===2)return; state=2;
+    removeEventListener('keydown',skip);
+    wake();
+    root.classList.remove('intro-on');
+    intro.remove();
+    document.body.classList.remove('hero-load');   // the hero's own entrance waited for this moment
+  }
+  function skip(){
+    if(state)return; state=1;
+    document.body.classList.remove('hero-load');
+    try{intro.animate([{opacity:getComputedStyle(intro).opacity},{opacity:0}],{duration:320,easing:'ease-out',fill:'forwards'}).onfinish=end;}
+    catch(err){end();}
+  }
+  intro.addEventListener('pointerdown',skip);
+  addEventListener('keydown',skip);
+  intro.addEventListener('wheel',function(e){e.preventDefault();},{passive:false});
+  intro.addEventListener('animationstart',function(e){
+    if(e.animationName!=='sigOut')return;          // the name lets go: the page wakes and the hero's entrance begins underneath
+    wake();
+    document.body.classList.remove('hero-load');
+  });
+  intro.addEventListener('animationend',function(e){
+    if(e.target===intro&&e.animationName==='introLift')end();
+  });
+
+  /* camera: an exponential zoom from the whole sheet to the rug in the living room, easing in
+     slowly and settling long (a cubic bezier, sampled into keyframes so the browser can run it) */
+  function bezier(x1,y1,x2,y2){
+    return function(x){
+      if(x<=0)return 0;
+      if(x>=1)return 1;
+      var lo=0,hi=1,t=x,c,i;
+      for(i=0;i<30;i++){
+        c=3*(1-t)*(1-t)*t*x1+3*(1-t)*t*t*x2+t*t*t;
+        if(Math.abs(c-x)<1e-5)break;
+        if(c<x)lo=t;else hi=t;
+        t=(lo+hi)/2;
+      }
+      return 3*(1-t)*(1-t)*t*y1+3*(1-t)*t*t*y2+t*t*t;
+    };
+  }
+  var ease=bezier(.5,0,.1,1);
+  function go(){
+    if(state)return;
+    try{
+      var r=plan.getBoundingClientRect(), fit=Math.min(r.width/1600,r.height/1000);
+      var zoom=r.width/(fit*(r.width/r.height<.9?300:500));    // lands on a room about 5 m wide (3 m on a phone)
+      var tx=440, ty=330, steps=44, frames=[], i, e, s, k;
+      for(i=0;i<=steps;i++){
+        e=ease(i/steps); s=Math.pow(zoom,e); k=(1-e)/s;        // the rug slides straight to the centre as the view closes in
+        frames.push({offset:i/steps,transform:'translate('+(800-(tx+(800-tx)*k)*s).toFixed(2)+'px,'+(500-(ty+(500-ty)*k)*s).toFixed(2)+'px) scale('+s.toFixed(4)+')'});
+      }
+      cam.animate(frames,{duration:2200,easing:'linear',fill:'forwards'});
+      intro.style.setProperty('--page',getComputedStyle(document.body).backgroundColor);   // the paper settles into the page's colour before it lifts
+      intro.classList.add('go');
+      root.classList.add('intro-run');
+      addEventListener('resize',noteResize);
+      setTimeout(end,3800);                                    // safety net if the dissolve never reports back
+    }catch(err){end();}                                        // no animation support: skip the intro
+  }
+
+  /* hold scene 1 for 0.8 s, and until the page and the signature's typeface are ready, so the heavy
+     work of starting the 3D scene happens while the drawing is still and not during the move */
+  function wait(ms){return new Promise(function(done){setTimeout(done,ms);});}
+  var loaded=new Promise(function(done){
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',done);else done();
+  });
+  var face=document.fonts&&document.fonts.load?document.fonts.load('italic 300 64px Newsreader','Pankti Shah').catch(function(){}):0;
+  Promise.race([Promise.all([loaded,face,wait(800)]),wait(3500)]).then(function(){requestAnimationFrame(go);});
+})();
+</script>
 <a class="skip" href="#work">Skip to work</a>
 
 <header class="top" id="top">
@@ -726,7 +905,8 @@ applyTheme(night,false);
 lampBtn.addEventListener('click',()=>applyTheme(!night,true));
 sysDark.addEventListener('change',e=>{if(!root.hasAttribute('data-theme'))applyTheme(e.matches,false);});
 
-requestAnimationFrame(()=>setTimeout(()=>document.body.classList.remove('hero-load'),120));
+/* with the intro running, the hero's own entrance waits for the paper to lift (see the intro script) */
+if(!root.classList.contains('intro-on'))requestAnimationFrame(()=>setTimeout(()=>document.body.classList.remove('hero-load'),120));
 
 /* ---------- project pages ----------
    One project is on screen at a time and keeps its own address (#lushe-glow), so it can be shared,
