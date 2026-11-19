@@ -6,6 +6,10 @@
 <title>Pankti Shah – Interior Design Portfolio</title>
 <meta name="description" content="Portfolio of Pankti Shah, interior design student at Indus University, Ahmedabad. Retail, school, residential and adaptive reuse projects.">
 <meta name="theme-color" content="#161B15">
+<script>
+/* Pick the first view before anything paints, so a project link never flashes the homepage. */
+document.documentElement.dataset.view=/^#[\w-]+$/.test(location.hash)&&!/^#(home|work|about|contact)$/.test(location.hash)?'project':'home';
+</script>
 
 <!--
   ================================================================
@@ -207,11 +211,26 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .facts dl{grid-column:1 / span 8;display:grid;grid-template-columns:150px 1fr;gap:10px 24px;margin:0}
 .facts dt{font-family:var(--display);font-size:14px;font-weight:500;color:var(--ink-soft);padding-top:3px}
 .facts dd{margin:0}
-.palette{grid-column:9 / span 4}
-.palette h4{font-family:var(--display);font-size:14px;font-weight:500;color:var(--ink-soft);margin:3px 0 12px}
-.chips{display:flex;flex-wrap:wrap;gap:12px}
-.chip{display:flex;flex-direction:column;gap:6px;font-size:14px;width:82px}
+.palette{grid-column:9 / span 4;container-type:inline-size}
+.palette h4{font-family:var(--display);font-size:14px;font-weight:500;color:var(--ink-soft);margin:3px 0 18px}
+.chips{display:flex;flex-wrap:wrap;justify-content:space-between;gap:28px 12px;max-width:394px}
+.chip{display:flex;flex-direction:column;align-items:center;gap:10px;font-size:14px;width:82px;text-align:center}
 .chip i{display:block;width:82px;height:82px;border-radius:50%;box-shadow:inset 0 0 0 1px var(--line),0 12px 24px -14px rgba(0,0,0,.5)}
+/* too narrow for one row of four: 2 x 2 instead of 3 + 1 */
+@container (width < 364px){.chips{display:grid;grid-template-columns:repeat(2,82px);justify-content:start;column-gap:28px}}
+/* hover halo, tinted from each swatch's own colour (--c is set per chip in the template below) */
+@supports (color:oklch(from red l c h)){
+  .chip{--glow:oklch(from var(--c) clamp(.5,calc(l + .12),.8) calc(c * 1.8) h)}
+  .chip i{
+    box-shadow:inset 0 0 0 1px var(--line),0 12px 24px -14px rgba(0,0,0,.5),
+      0 0 10px 2px color-mix(in oklab,var(--glow) 0%,transparent),0 0 24px 2px color-mix(in oklab,var(--glow) 0%,transparent);
+    transition:box-shadow .6s var(--ease);
+  }
+  @media (hover:hover){
+    .chip:hover i{box-shadow:inset 0 0 0 1px var(--line),0 12px 24px -14px rgba(0,0,0,.5),
+      0 0 10px 2px color-mix(in oklab,var(--glow) 55%,transparent),0 0 24px 2px color-mix(in oklab,var(--glow) 30%,transparent)}
+  }
+}
 .vibes{display:flex;flex-wrap:wrap;gap:8px}
 .vibes span{border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:15px}
 @media (max-width:960px){
@@ -220,6 +239,26 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
   .facts dl,.palette{grid-column:1 / -1}
 }
 @media (max-width:560px){.facts dl{grid-template-columns:1fr;gap:2px}.facts dd{margin-bottom:12px}}
+
+/* ---------- project pages: one project on screen at a time ---------- */
+html[data-view="home"] #cases,
+html[data-view="project"] :is(#home,.statement,.index,.about,.contact){display:none}
+html[data-view="project"] .case{border-top:0;padding:calc(68px + clamp(28px,6vh,64px)) 0 clamp(56px,9vh,110px)}
+html[data-view="project"] footer{margin-top:0}
+.back{
+  display:inline-flex;align-items:center;gap:10px;margin:0 0 clamp(28px,5vw,56px);padding:8px 18px 8px 12px;
+  border:1px solid var(--line);border-radius:999px;text-decoration:none;
+  font-family:var(--display);font-size:14px;font-weight:500;letter-spacing:.01em;transition:border-color .25s;
+}
+.back svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;transition:transform .35s var(--ease)}
+.back:hover{border-color:var(--ink-soft)}
+.back:hover svg{transform:translateX(-3px)}
+.back:focus-visible{border-radius:999px}
+.case-head h3:focus{outline:none}
+@keyframes viewRise{from{opacity:0;transform:translateY(14px)}}
+@keyframes viewFade{from{opacity:0}}
+html.swap[data-view="project"] main{animation:viewRise .5s var(--ease)}
+html.swap[data-view="home"] main{animation:viewFade .45s var(--ease)}
 
 /* gallery strip */
 .strip-wrap{margin-top:clamp(40px,5vw,72px)}
@@ -563,6 +602,7 @@ document.getElementById('rows').innerHTML = PROJECTS.map(p=>`
 document.getElementById('cases').innerHTML = PROJECTS.map((p,pi)=>`
 <section class="case" id="${p.id}" aria-labelledby="${p.id}-h">
   <div class="wrap">
+    <a class="back" href="#work" data-back aria-label="Back to selected work"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H5M11 6l-6 6 6 6"/></svg>Back</a>
     <div class="case-head">
       <span class="meta">${esc(p.sem)}<br>${esc(p.kind)}${p.location?`<br>${esc(p.location)}`:""}</span>
       <h3 class="d" id="${p.id}-h">${esc(p.title)}</h3>
@@ -583,7 +623,7 @@ document.getElementById('cases').innerHTML = PROJECTS.map((p,pi)=>`
     </div>
     <div class="facts">
       <dl>${p.facts.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
-      ${p.palette?`<div class="palette"><h4>Palette</h4><div class="chips">${p.palette.map(([n,c])=>`<span class="chip"><i style="background:${c}"></i>${esc(n)}</span>`).join("")}</div></div>`:""}
+      ${p.palette?`<div class="palette"><h4>Palette</h4><div class="chips">${p.palette.map(([n,c])=>`<span class="chip" style="--c:${c}"><i style="background:${c}"></i>${esc(n)}</span>`).join("")}</div></div>`:""}
     </div>
     <div class="strip-wrap">
       <div class="strip-bar">
@@ -687,6 +727,93 @@ lampBtn.addEventListener('click',()=>applyTheme(!night,true));
 sysDark.addEventListener('change',e=>{if(!root.hasAttribute('data-theme'))applyTheme(e.matches,false);});
 
 requestAnimationFrame(()=>setTimeout(()=>document.body.classList.remove('hero-load'),120));
+
+/* ---------- project pages ----------
+   One project is on screen at a time and keeps its own address (#lushe-glow), so it can be shared,
+   reloaded and walked through with the browser's back and forward buttons. Going back to the
+   homepage brings the index back at the spot the visitor left it. */
+(function(){
+  const caseEl=new Map(PROJECTS.map(p=>[p.id,document.getElementById(p.id)]));
+  const sections=['home','work','about','contact'], homeTitle=document.title;
+  const ys={};                                     // scroll position of each history entry, by key
+  try{Object.assign(ys,JSON.parse(sessionStorage.getItem('pankti-ys')||'{}'));}catch{}
+  addEventListener('pagehide',()=>{try{sessionStorage.setItem('pankti-ys',JSON.stringify(ys));}catch{}});
+  const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  const tag=()=>{const k=uid();history.replaceState({...history.state,k},'');return k;};
+  const hashId=()=>{try{return decodeURIComponent(location.hash.slice(1));}catch{return '';}};
+  const hashProject=()=>{const h=hashId();return caseEl.has(h)?h:null;};
+  let key=(history.state&&history.state.k)||tag(), view=null, refocus=false;
+  addEventListener('scroll',()=>{ys[key]=scrollY;},{passive:true});
+
+  /* the page scrolls smoothly by default, but a change of view should land in place */
+  const jump=y=>scrollTo({top:y,left:0,behavior:'instant'});
+  const toSection=id=>{const el=document.getElementById(id);el?el.scrollIntoView({behavior:'instant',block:'start'}):jump(0);};
+
+  function setView(id,moved){
+    const from=view;
+    if(lb.open)lb.close();
+    view=id;
+    if(moved)root.classList.add('swap');
+    root.dataset.view=id?'project':'home';
+    caseEl.forEach((el,pid)=>{el.hidden=pid!==id;});
+    document.title=id?`${PROJECTS.find(p=>p.id===id).title} – Pankti Shah`:homeTitle;
+    $('#peek').classList.remove('on');
+    if(!moved)return;
+    if(id){const h=$('.case-head h3',caseEl.get(id));h.tabIndex=-1;h.focus({preventScroll:true});}
+    else{
+      dispatchEvent(new Event('resize'));          // the 3D stage was hidden, so measure it again
+      const row=refocus&&$(`.rows a[href="#${from}"]`);if(row)row.focus({preventScroll:true});
+    }
+    refocus=false;
+  }
+
+  /* a new history entry: a project, or the homepage (optionally at one of its sections) */
+  function visit(id,section){
+    ys[key]=scrollY;
+    const k=uid();
+    history.pushState({k,app:true},'','#'+(id||section));
+    key=k;
+    setView(id,true);
+    if(id)jump(0);else toSection(section);
+  }
+
+  /* the browser moved to another entry (back, forward, or an edited address) */
+  function sync(state,popped){
+    const id=hashProject(), k=state&&state.k;
+    if(id===view){                                 // same page, so the browser has scrolled it already
+      key=k||tag();
+      if(popped&&k&&ys[k]!=null)jump(ys[k]);
+      return;
+    }
+    ys[key]=scrollY;                               // the page being left, in case its last scroll event is still pending
+    key=k||tag();
+    setView(id,true);
+    if(ys[key]!=null)jump(ys[key]);else if(id)jump(0);else toSection(hashId());
+  }
+  addEventListener('popstate',e=>sync(e.state,true));
+  addEventListener('hashchange',()=>sync(history.state,false));
+
+  /* Back: step back when the entry before this one is ours, otherwise (a shared link) open the index */
+  function goBack(viaKeyboard){
+    refocus=viaKeyboard;
+    if(history.state&&history.state.app)history.back();else visit(null,'work');
+  }
+
+  document.addEventListener('click',e=>{
+    if(e.defaultPrevented||e.button||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
+    const a=e.target.closest('a[href^="#"]');if(!a)return;
+    let to;try{to=decodeURIComponent(a.hash.slice(1));}catch{return;}
+    if(a.hasAttribute('data-back')){e.preventDefault();goBack(e.detail===0);}
+    else if(caseEl.has(to)){e.preventDefault();visit(to);}
+    else if(view){                                 // a header or footer link while a project is open
+      e.preventDefault();
+      if(a.closest('footer'))scrollTo({top:0,behavior:'smooth'});
+      else visit(null,sections.includes(to)?to:'home');
+    }
+  });
+
+  setView(hashProject(),false);
+})();
 
 /* =========================================================
    3D HERO: the stacked rooms from Pankti's portfolio cover,
